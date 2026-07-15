@@ -7,20 +7,20 @@ Usage :
 
 import sys
 
+import pdfplumber
+
 
 def extract_text(pdf_path: str) -> str:
-    """Retourne tout le texte du PDF.
+    """Retourne tout le texte du PDF."""
+    pages_text = []
 
-    TODO (toi) :
-      1. importe pdfplumber en haut du fichier
-      2. ouvre le PDF avec pdfplumber.open(pdf_path)
-      3. boucle sur les pages (pdf.pages)
-      4. récupère le texte de chaque page avec page.extract_text()
-      5. retourne le tout joint en une seule chaîne
+    with pdfplumber.open(pdf_path) as pdf:
+        for page in pdf.pages:
+            text = page.extract_text()
+            if text:
+                pages_text.append(text)
 
-    Indice : certaines pages peuvent retourner None — gère ce cas.
-    """
-    raise NotImplementedError("À toi de jouer — implémente extract_text()")
+    return "\n".join(pages_text)
 
 
 def extract_fields(text: str) -> dict:
