@@ -1,0 +1,17 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Secrets — JAMAIS de clé API dans git
+.env
+
+# Node (pour le dashboard plus tard)
+node_modules/
+dist/
+
+# Vraies factures = données privées, on ne les committe pas
+samples/*.pdf
+
+# macOS
+.DS_Store
