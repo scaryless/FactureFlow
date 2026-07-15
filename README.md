@@ -1,20 +1,46 @@
 # FactureFlow — Extracteur de factures automatisé
 
-> (À toi de jouer : écris ici le pitch en 3 phrases — le problème, la solution, pour qui.)
+Prenez vos factures en photo ou téléversez un PDF, et leurs données (fournisseur, date, montants, taxes) sont extraites par l'IA, puis stockées automatiquement dans une base de données. Le tout se consulte dans un tableau de bord simple, avec export CSV pour la comptabilité ou les impôts.
 
 ## Le problème
 
-(À compléter)
+Le moment des impôts arrive et vous ne savez plus où sont vos factures — vous n'en retrouvez que quelques-unes. Reçus de gaz froissés dans l'auto, factures d'Hydro perdues dans les courriels, relevés de cellulaire jamais téléchargés : retranscrire tout ça à la main prend des heures, et on en oublie toujours.
+
+Ce problème touche autant les particuliers que les petites entreprises, où la saisie manuelle des factures fournisseurs gruge un temps précieux chaque mois.
 
 ## La solution
 
-(À compléter — ajoute une capture d'écran quand le dashboard existera)
+FactureFlow automatise la corvée du début à la fin :
+
+
+Vous déposez une facture — PDF (Hydro, cellulaire, achat en ligne) ou simple photo prise avec votre téléphone (reçu de gaz, de restaurant).
+
+L'intelligence artificielle lit le document et en extrait les données clés : fournisseur, numéro de facture, date, sous-total, TPS, TVQ, total.
+
+Le système vérifie la cohérence des montants et attribue un score de confiance. En cas de doute, la facture est marquée « à valider » — un humain garde toujours le dernier mot.
+
+Tout s'affiche dans un tableau de bord : dépenses par mois, filtres par fournisseur, export CSV en un clic.
+
 
 ## Comment ça fonctionne
 
-(À compléter — schéma + explication simple, comme pour un client non technique)
+[Dépôt]                     [Extraction]                [Stockage]        [Consultation]
+Photo ou PDF   ──────▶   API Python (FastAPI)   ──▶   Supabase    ──▶   Dashboard React
+                          1. Lecture du PDF            (PostgreSQL)      - liste et filtres
+                          (pdfplumber) ou de           factures +        - totaux par mois
+                          l'image directement          fournisseurs      - validation humaine
+                          2. Claude AI extrait                           - export CSV
+                          un JSON structuré
+                          3. Validation des
+                          montants + score
+                          de confiance
+
+
+En mots simples : quand une facture arrive, un programme la lit (qu'elle soit un PDF ou une photo), demande à une IA d'en tirer les informations importantes, vérifie que les chiffres se tiennent (sous-total + taxes = total), puis range le tout dans une base de données. Le tableau de bord ne fait qu'afficher ce qui s'y trouve — comme un classeur, mais qui se remplit tout seul.
+
 
 ## Lancer en local
+
 
 ```bash
 cd api
@@ -26,4 +52,20 @@ python extract.py ../samples/ma_facture.pdf
 
 ## Limites connues
 
-(À compléter au fur et à mesure)
+Les factures manuscrites ne sont pas prises en charge.
+Une seule devise (CAD) pour l'instant.
+Les photos floues ou mal cadrées réduisent la qualité de l'extraction — le score de confiance le signale.
+
+
+## Feuille de route
+
+
+ Extraction du texte des PDF (pdfplumber)
+ Extraction structurée avec l'API Claude (PDF et photos)
+ Validation des montants et score de confiance
+ API REST (FastAPI) + base de données Supabase
+ Tableau de bord React avec export CSV
+ Application mobile de capture (React Native / Expo)
+
+
+English summary: FactureFlow extracts structured data (vendor, date, amounts, taxes) from invoice PDFs and receipt photos using AI, validates the amounts, stores everything in PostgreSQL, and displays it in a React dashboard with CSV export.
