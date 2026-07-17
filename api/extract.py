@@ -5,6 +5,7 @@ Usage :
     python extract.py ../samples/ma_facture.pdf
 """
 
+import base64
 import json
 import sys
 import re  # pour trouver les dates dans le texte
@@ -111,6 +112,31 @@ def extract_fields(text: str) -> dict:
     return _json_de_reponse(response)
 
 
+def extract_fields_image(image_path: str) -> dict:
+    """Extrait les données d'une photo de facture via Claude vision."""
+    with open(image_path, "rb") as f:
+        data = base64.standard_b64encode(f.read()).decode()
+
+    if image_path.lower().endswith((".jpg", ".jpeg")):
+        media_type = "image/jpeg"
+    else:
+        media_type = "image/png"
+
+    response = client.messages.create(
+        model="claude-haiku-4-5",
+        max_tokens=1024,
+        messages=[{
+            "role": "user",
+            "content": [
+                {"type": "image",
+                 "source": {"type": "base64", "media_type": media_type, "data": data}},
+                {"type": "text", "text": TON_PROMPT},
+            ],
+        }],
+    )
+    return _json_de_reponse(response)
+
+
 def validate(fields: dict) -> list:
     """Vérifie la cohérence des données extraites. Retourne les avertissements.
 
@@ -199,16 +225,31 @@ def extract_with_retry(text: str) -> tuple[dict, list]:
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage : python extract.py <chemin_du_pdf>")
+        print("Usage : python extract.py <chemin_du_fichier.pdf|.jpg|.png>")
         sys.exit(1)
 
-    text = extract_text(sys.argv[1])
-    print("===== TEXTE EXTRAIT =====")
-    print(text)
-    print(f"\n({len(text)} caractères)")
-    print("--------------------------------")
-    print("\n===== DONNÉES STRUCTURÉES =====")
-    fields, avertissements = extract_with_retry(text)
+    chemin = sys.argv[1]
+
+    if chemin.lower().endswith(".pdf"):
+        # Chemin PDF : texte -> extraction -> ancres -> validation -> reprise
+        text = extract_text(chemin)
+        print("===== TEXTE EXTRAIT =====")
+        print(text)
+        print(f"\n({len(text)} caractères)")
+        print("--------------------------------")
+        print("\n===== DONNÉES STRUCTURÉES =====")
+        fields, avertissements = extract_with_retry(text)
+    elif chemin.lower().endswith((".jpg", ".jpeg", ".png")):
+        # Chemin photo : vision -> validation (pas de texte brut, donc
+        # pas d'ancres regex ni de reprise en v1)
+        print("===== PHOTO ANALYSÉE PAR VISION =====")
+        print("\n===== DONNÉES STRUCTURÉES =====")
+        fields = extract_fields_image(chemin)
+        avertissements = validate(fields)
+    else:
+        print(f"Format non pris en charge : {chemin}")
+        print("Formats acceptés : .pdf, .jpg, .jpeg, .png")
+        sys.exit(1)
     print(json.dumps(fields, indent=2, ensure_ascii=False))
     print("--------------------------------")
     print(f"({len(fields)} champs)")

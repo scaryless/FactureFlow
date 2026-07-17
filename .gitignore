@@ -11,7 +11,8 @@ node_modules/
 dist/
 
 # Vraies factures = données privées, on ne les committe pas
-samples/*.pdf
+samples/*
+!samples/README.md
 
 # macOS
 .DS_Store
