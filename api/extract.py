@@ -48,8 +48,9 @@ sans balises Markdown, avec exactement ces champs :
 - "dernier_paiement" : le montant du dernier paiement reçu (nombre)
 - "date_dernier_paiement" : la date de ce paiement au format AAAA-MM-JJ (chaîne)
 - "type_document" : "facture", "recu" ou "releve_carte" (chaîne)
-- "categorie" : une valeur parmi "energie", "telecom", "essence", "epicerie", \
-"restaurant", "credit", "autre" (chaîne)
+- "categorie" : une valeur parmi "epicerie", "restaurant", "abonnement", \
+"telecom", "energie", "essence", "transport", "sante", "assurance", \
+"credit", "maison", "autre" (chaîne)
 - "date_echeance" : la date limite de paiement au format AAAA-MM-JJ (chaîne)
 - "devise" : le code de la devise, par défaut "CAD" (chaîne)
 
@@ -71,8 +72,11 @@ dates sont incohérentes entre elles.
 du type « PAIEMENT RECU » ou « PAYMENT RECEIVED ». Le montant est positif \
 (75.00- sur le relevé signifie un paiement de 75.00). Pour une facture \
 ordinaire sans historique de paiement, mets null.
-7. "categorie" doit être exactement une des sept valeurs de la liste — \
-jamais une autre. Si aucune ne convient clairement, mets "autre".
+7. "categorie" doit être exactement une des douze valeurs de la liste — \
+jamais une autre. Repères : SkipTheDishes, UberEats, DoorDash = "restaurant"; \
+Spotify, Netflix, gym, iCloud, logiciels = "abonnement"; STM, Uber, taxi, \
+stationnement = "transport"; pharmacie, dentiste = "sante"; Canadian Tire, \
+rénovation, meubles = "maison". Si aucune ne convient clairement, mets "autre".
 
 Exemple de sortie :
 {"fournisseur": "Hydro-Québec", "numero_facture": "652 401 578", "date": "2026-05-14", "sous_total": 87.20, "tps": 4.36, "tvq": 8.70, "total": 100.26, "dernier_paiement": null, "date_dernier_paiement": null, "type_document": "facture", "categorie": "energie", "date_echeance": "2026-06-05", "devise": "CAD"}

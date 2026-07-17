@@ -1,3 +1,7 @@
 anthropic
 python-dotenv
 pdfplumber
+fastapi
+uvicorn
+python-multipart
+supabase
