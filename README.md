@@ -49,9 +49,11 @@ python extract.py ../samples/ma_facture.pdf
 ## Feuille de route
 
 - [x] Extraction du texte des PDF (pdfplumber)
-- [ ] Extraction structurée avec l'API Claude (PDF et photos)
-- [ ] Validation des montants et score de confiance
+- [x] Extraction structurée avec l'API Claude (13 champs, catégories)
+- [x] Validation des montants et des dates, ancres regex, boucle d'autocorrection avec escalade de modèle
+- [ ] Prise en charge des photos de reçus (Claude vision)
 - [ ] API REST (FastAPI) + base de données Supabase
+- [ ] Orchestration N8N : courriel entrant → extraction → stockage → alerte si doute
 - [ ] Tableau de bord React avec export CSV
 - [ ] Application mobile de capture (React Native / Expo)
 
