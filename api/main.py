@@ -152,7 +152,7 @@ def list_invoices():
 
 CHAMPS_MODIFIABLES = {
     "fournisseur", "numero_facture", "date", "sous_total", "tps", "tvq",
-    "total", "categorie", "type_document", "date_echeance", "statut",
+    "total", "frais", "categorie", "type_document", "date_echeance", "statut",
     "portee",
 }
 
@@ -199,7 +199,7 @@ def export_csv():
               .order("date", desc=False).execute()).data
 
     colonnes = ["date", "fournisseur", "categorie", "portee", "type_document",
-                "numero_facture", "sous_total", "tps", "tvq", "total",
+                "numero_facture", "sous_total", "tps", "tvq", "frais", "total",
                 "devise", "statut", "date_echeance"]
 
     tampon = io.StringIO()

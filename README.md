@@ -17,7 +17,7 @@ FactureFlow automatise la corvée du début à la fin :
 3. Le système vérifie la cohérence des montants et attribue un score de confiance. En cas de doute, la facture est marquée « à valider » — un humain garde toujours le dernier mot.
 4. Tout s'affiche dans un tableau de bord : dépenses par mois, filtres par fournisseur, export CSV en un clic.
 
-*(Capture d'écran du tableau de bord à venir.)*
+![Tableau de bord FactureFlow](docs/images/dashboard.png)
 
 ## Comment ça fonctionne
 
@@ -36,6 +36,16 @@ Photo ou PDF   ──────▶   API Python (FastAPI)   ──▶   Supaba
 
 En mots simples : quand une facture arrive, un programme la lit (qu'elle soit un PDF ou une photo), demande à une IA d'en tirer les informations importantes, vérifie que les chiffres se tiennent (sous-total + taxes = total), puis range le tout dans une base de données. Le tableau de bord ne fait qu'afficher ce qui s'y trouve — comme un classeur, mais qui se remplit tout seul.
 
+## L'API en action
+
+La documentation interactive générée automatiquement par FastAPI :
+
+![Endpoints de l'API FactureFlow](docs/images/api-endpoints.png)
+
+Un reçu d'épicerie photographié, envoyé à `POST /extract`, et la réponse structurée avec verdict de validation :
+
+![Démo de l'API FactureFlow dans Swagger UI](docs/images/api-swagger-demo.png)
+
 ## Lancer en local
 
 ```bash
@@ -43,7 +53,14 @@ cd api
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-python extract.py ../samples/ma_facture.pdf
+
+# En ligne de commande :
+python extract.py ../samples/ma_facture.pdf   # PDF
+python extract.py ../samples/mon_recu.jpg     # photo
+
+# Ou en service web :
+uvicorn main:app --reload
+# puis ouvrir http://127.0.0.1:8000/docs
 ```
 
 ## Feuille de route

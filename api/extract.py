@@ -44,6 +44,7 @@ sans balises Markdown, avec exactement ces champs :
 - "sous_total" : le montant avant taxes (nombre)
 - "tps" : le montant de la TPS (nombre)
 - "tvq" : le montant de la TVQ (nombre)
+- "frais" : les autres frais (administration, retard, service) hors taxes (nombre)
 - "total" : le montant total payé (nombre)
 - "dernier_paiement" : le montant du dernier paiement reçu (nombre)
 - "date_dernier_paiement" : la date de ce paiement au format AAAA-MM-JJ (chaîne)
@@ -58,8 +59,10 @@ Règles :
 1. Si une information est introuvable dans le texte, mets null — n'invente jamais.
 2. Les montants sont des nombres avec un point décimal (12,34 $ devient 12.34), \
 jamais des chaînes, sans symbole de devise.
-3. S'il y a plusieurs dates, "date" est la date d'émission, \
-"date_echeance" est la date limite de paiement.
+3. S'il y a plusieurs dates, "date" est la date d'émission — celle de \
+l'en-tête du document (ex. « Facture d'électricité du 8 mai 2026 »). \
+Ignore les dates des tableaux d'historique ou de comparaison annuelle. \
+"date_echeance" est la date limite de paiement de la présente facture.
 4. Ne confonds pas TPS (5 %) et TVQ (9,975 %) : vérifie les taux si les \
 étiquettes sont ambiguës.
 5. Attention aux dates ambiguës (ex. « 26 06 24 ») : cherche l'en-tête de \
@@ -79,7 +82,7 @@ stationnement = "transport"; pharmacie, dentiste = "sante"; Canadian Tire, \
 rénovation, meubles = "maison". Si aucune ne convient clairement, mets "autre".
 
 Exemple de sortie :
-{"fournisseur": "Hydro-Québec", "numero_facture": "652 401 578", "date": "2026-05-14", "sous_total": 87.20, "tps": 4.36, "tvq": 8.70, "total": 100.26, "dernier_paiement": null, "date_dernier_paiement": null, "type_document": "facture", "categorie": "energie", "date_echeance": "2026-06-05", "devise": "CAD"}
+{"fournisseur": "Hydro-Québec", "numero_facture": "652 401 578", "date": "2026-05-14", "sous_total": 87.20, "tps": 4.36, "tvq": 8.70, "frais": null, "total": 100.26, "dernier_paiement": null, "date_dernier_paiement": null, "type_document": "facture", "categorie": "energie", "date_echeance": "2026-06-05", "devise": "CAD"}
 
 Voici le texte de la facture :
 """
@@ -151,7 +154,8 @@ def validate(fields: dict) -> list:
     montants = [fields.get("sous_total"), fields.get("tps"),
                 fields.get("tvq"), fields.get("total")]
     if all(m is not None for m in montants):
-        somme = fields["sous_total"] + fields["tps"] + fields["tvq"]
+        somme = (fields["sous_total"] + fields["tps"] + fields["tvq"]
+                 + (fields.get("frais") or 0))
         if abs(somme - fields["total"]) >= 0.02:
             warnings.append(f"montants incohérents : {somme:.2f} ≠ {fields['total']:.2f}")
 
@@ -186,6 +190,24 @@ def corriger_dates_par_ancres(fields: dict, text: str) -> dict:
                 print(f"(correction code : {champ} {valeur} -> {ancre})")
                 fields[champ] = ancre
 
+    # Réparation d'année, en code pur : si l'émission et l'échéance sont
+    # incohérentes, mais qu'aligner l'année de l'émission sur celle de
+    # l'échéance donne un écart plausible (0 à 90 jours), c'est une année
+    # mal lue (ex. pêchée dans un tableau d'historique) — on corrige.
+    d, e = fields.get("date"), fields.get("date_echeance")
+    if d and e:
+        try:
+            emission = datetime.strptime(d, "%Y-%m-%d")
+            echeance = datetime.strptime(e, "%Y-%m-%d")
+            ecart = (echeance - emission).days
+            if ecart < 0 or ecart > 90:
+                candidat = emission.replace(year=echeance.year)
+                if 0 <= (echeance - candidat).days <= 90:
+                    fields["date"] = candidat.strftime("%Y-%m-%d")
+                    print(f"(correction code : date {d} -> {fields['date']} — année alignée sur l'échéance)")
+        except ValueError:
+            pass  # date invalide (ex. 29 février) : la validation la signalera
+
     return fields
 
 
@@ -209,20 +231,23 @@ def extract_with_retry(text: str) -> tuple[dict, list]:
             + "\nCorrige ces incohérences et retourne le JSON complet corrigé, "
             + "en respectant toutes les règles."
         )
-        response = client.messages.create(
-            model="claude-sonnet-5",  # escalade : modèle plus fort pour les cas difficiles
-            max_tokens=1024,
-            messages=[{"role": "user", "content": correction}],
-        )
-        fields_corriges = _json_de_reponse(response)
-        fields_corriges = corriger_dates_par_ancres(fields_corriges, text)
+        try:
+            response = client.messages.create(
+                model="claude-sonnet-5",  # escalade : modèle plus fort pour les cas difficiles
+                max_tokens=8192,  # Sonnet réfléchit avant de répondre : sa réflexion
+                # consomme des tokens. Trop petit = réponse coupée avant le texte.
+                messages=[{"role": "user", "content": correction}],
+            )
+            fields_corriges = _json_de_reponse(response)
+            fields_corriges = corriger_dates_par_ancres(fields_corriges, text)
 
-        warnings_corriges = validate(fields_corriges)
-        if not warnings_corriges:
-            return fields_corriges, []  # la correction a réglé le problème
-
-        # La reprise n'a pas suffi : on garde la première version,
-        # avec ses avertissements — l'humain tranchera.
+            warnings_corriges = validate(fields_corriges)
+            if not warnings_corriges:
+                return fields_corriges, []  # la correction a réglé le problème
+        except Exception as erreur:
+            # La reprise ne doit jamais faire échouer la requête entière :
+            # on garde la première extraction, avec ses avertissements.
+            print(f"(reprise échouée : {erreur} — première version conservée)")
 
     return fields, warnings
 
