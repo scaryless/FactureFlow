@@ -69,9 +69,9 @@ uvicorn main:app --reload
 - [x] Extraction structurée avec l'API Claude (13 champs, catégories)
 - [x] Validation des montants et des dates, ancres regex, boucle d'autocorrection avec escalade de modèle
 - [x] Prise en charge des photos de reçus (Claude vision)
-- [ ] API REST (FastAPI) + base de données Supabase
-- [ ] Orchestration N8N : courriel entrant → extraction → stockage → alerte si doute
-- [ ] Tableau de bord React avec export CSV
+- [x] API REST (FastAPI) + base de données Supabase (statuts, anti-doublons, portée personnel/entreprise)
+- [x] Orchestration N8N : courriel entrant → extraction → stockage → alerte si doute
+- [x] Tableau de bord React : KPI, graphiques, tri/filtres, validation humaine, export CSV
 - [ ] Application mobile de capture (React Native / Expo)
 
 ## Limites connues
