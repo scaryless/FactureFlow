@@ -5,6 +5,8 @@ __pycache__/
 
 # Secrets — JAMAIS de clé API dans git
 .env
+.env.*
+!.env.example
 
 # Node (pour le dashboard plus tard)
 node_modules/
