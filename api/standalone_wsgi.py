@@ -95,7 +95,9 @@ def application(environ, start_response):
         if path in ("/extract", "/invoices/import") and method == "POST":
             form = cgi.FieldStorage(fp=environ["wsgi.input"], environ=environ, keep_blank_values=True)
             upload = form["file"] if "file" in form else None
-            if not upload or not getattr(upload, "file", None): raise ValueError("Fichier manquant")
+            # cgi.FieldStorage may raise TypeError when coerced to bool.
+            if upload is None or getattr(upload, "file", None) is None:
+                raise ValueError("Fichier manquant")
             blob, filename = upload.file.read(), (upload.filename or "facture")
             fields = extract_invoice(blob, filename)
             record = {**fields, "user_id":user_id, "fichier":filename, "file_hash":hashlib.sha256(blob).hexdigest(), "portee":form.getfirst("portee", "personnel"), "statut":"a_valider", "avertissements":[]}
