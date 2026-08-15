@@ -1,0 +1,40 @@
+name: FactureFlow CI
+
+on:
+  push:
+    branches: [main, feat/public-saas-foundation]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    name: Validate API
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile Python entry points
+        run: python -m py_compile api/main.py api/extract.py api/passenger_wsgi.py api/standalone_wsgi.py
+
+  dashboard:
+    name: Build dashboard
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Build production dashboard
+        run: npm run build
