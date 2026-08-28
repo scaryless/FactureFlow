@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-
-const API = "http://127.0.0.1:8000"
+import { apiFetch } from "./auth.js"
 
 const COULEURS = {
   epicerie: "#22d3ee",
@@ -139,7 +138,7 @@ function BarresMensuelles({ parMois }) {
 }
 
 /* ---------- application ---------- */
-export default function App() {
+export default function App({ session, onSignOut }) {
   const [factures, setFactures] = useState([])
   const [heure, setHeure] = useState(new Date())
   const [toast, setToast] = useState(null)
@@ -158,10 +157,10 @@ export default function App() {
 
   const charger = async () => {
     try {
-      const r = await fetch(`${API}/invoices`)
+      const r = await apiFetch("/invoices")
       setFactures(await r.json())
     } catch {
-      notifier("⚠️ API injoignable — lance uvicorn dans api/")
+      notifier("⚠️ Impossible de charger tes factures. Vérifie la connexion API.")
     }
   }
 
@@ -236,26 +235,26 @@ export default function App() {
     corps.append("file", fichier)
     corps.append("portee", portee)
     try {
-      const r = await fetch(`${API}/extract`, { method: "POST", body: corps })
+      const r = await apiFetch("/extract", { method: "POST", body: corps })
       const data = await r.json()
       if (data.verdict === "doublon") notifier("♻️ Fichier déjà traité — ignoré.")
       else if (data.verdict === "ok") notifier(`✅ ${data.donnees?.fournisseur ?? "Facture"} — ${fmt(data.donnees?.total)}`)
       else notifier(`⚠️ Facture ajoutée, à vérifier : ${(data.avertissements || []).join("; ")}`)
       await charger()
-    } catch {
-      notifier("❌ Erreur pendant l'extraction.")
+    } catch (error) {
+      notifier(`❌ ${error.message}`)
     }
     setChargement(false)
   }
 
   const valider = async (id) => {
-    await fetch(`${API}/invoices/${id}/valider`, { method: "POST" })
+    await apiFetch(`/invoices/${id}/valider`, { method: "POST" })
     notifier("✅ Facture validée.")
     charger()
   }
 
   const changerPortee = async (id, nouvellePortee) => {
-    await fetch(`${API}/invoices/${id}`, {
+    await apiFetch(`/invoices/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ portee: nouvellePortee }),
@@ -265,7 +264,7 @@ export default function App() {
   }
 
   const changerCategorie = async (id, categorie) => {
-    await fetch(`${API}/invoices/${id}`, {
+    await apiFetch(`/invoices/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ categorie }),
@@ -280,7 +279,7 @@ export default function App() {
     if (!window.confirm(`Supprimer définitivement ${detail} ?\nCette action est irréversible.`)) {
       return
     }
-    await fetch(`${API}/invoices/${id}`, { method: "DELETE" })
+    await apiFetch(`/invoices/${id}`, { method: "DELETE" })
     notifier("🗑️ Facture supprimée.")
     charger()
   }
@@ -288,6 +287,21 @@ export default function App() {
   const joursAvant = (dateStr) => {
     const diff = Math.ceil((new Date(dateStr) - new Date()) / 86400000)
     return diff <= 0 ? "aujourd'hui" : `${diff} j`
+  }
+
+  const exporter = async () => {
+    try {
+      const response = await apiFetch("/export.csv")
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = "factureflow.csv"
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      notifier(`❌ ${error.message}`)
+    }
   }
 
   return (
@@ -299,6 +313,7 @@ export default function App() {
             <div className="logo-orb" />
             <span>FACTURE<em>FLOW</em></span>
           </div>
+          <button className="signout" onClick={onSignOut}>Déconnexion · {session.user?.email}</button>
           <div className="clock">
             <strong>{heure.toLocaleTimeString("fr-CA")}</strong>
             {heure.toLocaleDateString("fr-CA", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
@@ -470,7 +485,7 @@ export default function App() {
             </div>
           )}
           <div className="actions-bar">
-            <a className="btn" href={`${API}/export.csv`}>⬇ Export CSV (impôts / comptabilité)</a>
+            <button className="btn" onClick={exporter}>⬇ Export CSV (impôts / comptabilité)</button>
             <button className="btn" onClick={charger}>↻ Rafraîchir</button>
           </div>
         </div>

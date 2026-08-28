@@ -11,12 +11,13 @@ import sys
 import re  # pour trouver les dates dans le texte
 from datetime import datetime
 
-import anthropic
 import pdfplumber
 from dotenv import load_dotenv
+from openai import OpenAI
 
 load_dotenv()
-client = anthropic.Anthropic()
+client = OpenAI()
+MODEL = "gpt-4.1-mini"
 
 
 def extract_text(pdf_path: str) -> str:
@@ -89,38 +90,24 @@ Voici le texte de la facture :
 
 
 def _json_de_reponse(response) -> dict:
-    """Extrait le JSON du bloc texte d'une réponse API.
-
-    Certains modèles (ex. Sonnet) renvoient d'abord un bloc de réflexion
-    (ThinkingBlock) avant le texte : on cherche le bloc de type "text"
-    au lieu de supposer que c'est le premier.
-    """
-    raw = None
-    for bloc in response.content:
-        if bloc.type == "text":
-            raw = bloc.text.strip()
-            break
-    if raw is None:
-        raise ValueError("Réponse API sans bloc texte")
-
+    """Extrait le JSON retourné par l'API Responses d'OpenAI."""
+    raw = response.output_text.strip()
     if raw.startswith("```"):
         raw = raw.strip("`").removeprefix("json").strip()
-
     return json.loads(raw)
 
 
 def extract_fields(text: str) -> dict:
-    """Transforme le texte d'une facture en données structurées via Claude."""
-    response = client.messages.create(
-        model="claude-haiku-4-5",
-        max_tokens=1024,
-        messages=[{"role": "user", "content": TON_PROMPT + "\n\n" + text}],
+    """Transforme le texte d'une facture en données structurées via OpenAI."""
+    response = client.responses.create(
+        model=MODEL,
+        input=TON_PROMPT + "\n\n" + text,
     )
     return _json_de_reponse(response)
 
 
 def extract_fields_image(image_path: str) -> dict:
-    """Extrait les données d'une photo de facture via Claude vision."""
+    """Extrait les données d'une photo de facture via OpenAI vision."""
     with open(image_path, "rb") as f:
         data = base64.standard_b64encode(f.read()).decode()
 
@@ -129,15 +116,13 @@ def extract_fields_image(image_path: str) -> dict:
     else:
         media_type = "image/png"
 
-    response = client.messages.create(
-        model="claude-haiku-4-5",
-        max_tokens=1024,
-        messages=[{
+    response = client.responses.create(
+        model=MODEL,
+        input=[{
             "role": "user",
             "content": [
-                {"type": "image",
-                 "source": {"type": "base64", "media_type": media_type, "data": data}},
-                {"type": "text", "text": TON_PROMPT},
+                {"type": "input_text", "text": TON_PROMPT},
+                {"type": "input_image", "image_url": f"data:{media_type};base64,{data}"},
             ],
         }],
     )
@@ -232,11 +217,9 @@ def extract_with_retry(text: str) -> tuple[dict, list]:
             + "en respectant toutes les règles."
         )
         try:
-            response = client.messages.create(
-                model="claude-sonnet-5",  # escalade : modèle plus fort pour les cas difficiles
-                max_tokens=8192,  # Sonnet réfléchit avant de répondre : sa réflexion
-                # consomme des tokens. Trop petit = réponse coupée avant le texte.
-                messages=[{"role": "user", "content": correction}],
+            response = client.responses.create(
+                model=MODEL,
+                input=correction,
             )
             fields_corriges = _json_de_reponse(response)
             fields_corriges = corriger_dates_par_ancres(fields_corriges, text)

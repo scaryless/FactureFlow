@@ -1,7 +1,8 @@
-anthropic
+openai
 python-dotenv
 pdfplumber
 fastapi
 uvicorn
 python-multipart
 supabase
+a2wsgi
